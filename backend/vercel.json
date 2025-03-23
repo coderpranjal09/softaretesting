@@ -1,10 +1,18 @@
 {
     "version": 2,
-    "builds": [
-      { "src": "backend/app.js", "use": "@vercel/node" }
+    "public": true,
+    "regions": ["sin1"], 
+    "headers": [
+      {
+        "source": "/api/(.*)",
+        "headers": [
+          { "key": "Access-Control-Allow-Origin", "value": "*" },
+          { "key": "Access-Control-Allow-Methods", "value": "GET,POST,OPTIONS" },
+          { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+        ]
+      }
     ],
-    "routes": [
-      { "src": "/api/(.*)", "dest": "backend/app.js" }
+    "rewrites": [
+      { "source": "/api/(.*)", "destination": "/api/$1" }
     ]
   }
-  

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Vehicle Alert System</title>
     <link rel="icon" type="image/png" href="logo.png">
     <script src="data.js"></script>
@@ -526,7 +527,7 @@
                            `Details: ${document.getElementById("additionalInfo").value}`;
 
             try {
-                const response = await fetch('https://your-vercel-app.vercel.app/api/vehicle/${vehicleID}', {
+                const response = await fetch('https://your-vercel-app.vercel.app/api/vehicle/' + vehicleID, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
