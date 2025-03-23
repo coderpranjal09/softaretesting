@@ -526,7 +526,7 @@
                            `Details: ${document.getElementById("additionalInfo").value}`;
 
             try {
-                const response = await fetch('http://localhost:5000/api/send-alert', {
+                const response = await fetch('https://contactowner.vercel.app/api/send-alert', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
