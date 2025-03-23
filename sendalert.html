@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Alert System</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <script src="data.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --text: #f8fafc;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #eab308;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background: var(--background);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .container {
+            background: var(--surface);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            width: 100%;
+            max-width: 640px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            margin: 1rem;
+            transition: transform 0.3s ease;
+            display: none;
+        }
+
+        .active-step {
+            display: block;
+        }
+
+        h1, h2 {
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            color: var(--text);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 10px 0;
+        }
+        select{
+            color: #ffffff;
+            background-color: #1e293b;
+        }
+        option{
+            color: black;
+            background-color: rgb(162, 168, 236);
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            border-radius: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            margin: 10px 0;
+        }
+
+        .btn:hover {
+            background: var(--primary-hover);
+        }
+
+        video {
+            width: 100%;
+            border-radius: 1rem;
+            margin: 1.5rem 0;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+
+        .loading-spinner {
+            width: 3rem;
+            height: 3rem;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: 1.5rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .alert-box {
+            padding: 1rem;
+            border-radius: 0.75rem;
+            margin: 1rem 0;
+            display: none;
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid var(--error);
+            color: var(--error);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .success-card {
+            background: rgba(34, 197, 94, 0.1);
+            border: 2px solid var(--success);
+            padding: 2rem;
+            border-radius: 1rem;
+            text-align: center;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn-group .btn {
+            flex: 1;
+        }
+
+        .video-container {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .detection-outline {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 3px solid var(--success);
+            border-radius: 1rem;
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+            pointer-events: none;
+            display: none;
+        }
+
+        .detection-info {
+            background: var(--surface);
+            padding: 1rem;
+            border-radius: 0.75rem;
+            margin-top: 1rem;
+            border: 2px solid var(--success);
+            color: var(--success);
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 500;
+            display: none;
+        }
+
+        /* Base styles (already defined in your code) */
+
+/* Media Queries for Responsive Design */
+@media (max-width: 768px) {
+    body {
+        padding: 1rem; /* Reduce padding for smaller screens */
+    }
+
+    .container {
+        padding: 1.5rem; /* Reduce container padding */
+        margin: 0.5rem; /* Reduce container margin */
+    }
+
+    h1 {
+        font-size: 1.75rem; /* Reduce heading size */
+    }
+
+    h2 {
+        font-size: 1.5rem; /* Reduce subheading size */
+    }
+
+    input, select, textarea {
+        padding: 0.75rem; /* Reduce input padding */
+        font-size: 0.9rem; /* Reduce font size for inputs */
+    }
+
+    .btn {
+        padding: 0.75rem 1rem; /* Reduce button padding */
+        font-size: 0.9rem; /* Reduce button font size */
+    }
+
+    video {
+        margin: 1rem 0; /* Reduce video margin */
+    }
+
+    .detection-info {
+        font-size: 1rem; /* Reduce detection info font size */
+        padding: 0.75rem; /* Reduce detection info padding */
+    }
+
+    .success-card {
+        padding: 1.5rem; /* Reduce success card padding */
+    }
+
+    .btn-group {
+        flex-direction: column; /* Stack buttons vertically on small screens */
+        gap: 0.5rem; /* Reduce gap between buttons */
+    }
+
+    .btn-group .btn {
+        width: 100%; /* Full width buttons */
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 0.5rem; /* Further reduce padding for very small screens */
+    }
+
+    .container {
+        padding: 1rem; /* Further reduce container padding */
+        border-radius: 1rem; /* Reduce border radius */
+    }
+
+    h1 {
+        font-size: rem; /* Further reduce heading size */
+    }
+
+    h2 {
+        font-size: 1.25rem; /* Further reduce subheading size */
+    }
+
+    input, select, textarea {
+        padding: 1rem; /* Further reduce input padding */
+        font-size: 1rem; /* Further reduce font size for inputs */
+    }
+
+    .btn {
+        padding: 1rem 0.75rem; /* Further reduce button padding */
+        font-size: 1rem; /* Further reduce button font size */
+    }
+
+    video {
+        margin: 0.75rem 0; /* Further reduce video margin */
+    }
+
+    .detection-info {
+        font-size: 0.9rem; /* Further reduce detection info font size */
+        padding: 0.5rem; /* Further reduce detection info padding */
+    }
+
+    .success-card {
+        padding: 1rem; /* Further reduce success card padding */
+    }
+
+    .btn-group {
+        gap: 0.25rem; /* Further reduce gap between buttons */
+    }
+}
+    </style>
+</head>
+<body>
+    <div id="fullScreenLoading" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>Loading... Please wait</p>
+    </div>
+
+    <div id="consentModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Camera Access Required</h3>
+            <p>We need camera access to verify the vehicle. Your data is processed in real-time and not stored.</p>
+            <div class="btn-group">
+                <button class="btn" onclick="proceedWithVerification()">Accept & Continue</button>
+                <button class="btn" onclick="cancelVerification()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 1: Vehicle ID Input -->
+    <div id="vehicleForm" class="container active-step">
+        <h1>Enter Vehicle ID</h1>
+        <input type="text" id="vehicleID" placeholder="Vehicle ID" required autocomplete="off">
+        <button class="btn" onclick="nextStep()">Next</button>
+        <div id="errorMsg" class="alert-box">🚨 Vehicle Not Found! Please check Vehicle ID.</div>
+    </div>
+
+    <!-- Step 2: Issue Selection -->
+    <div id="issueForm" class="container">
+        <h2>Vehicle Information</h2>
+        <p id="vehicleDetails"></p>
+
+        <h2>Select Issue</h2>
+        <select id="issueSelect">
+            <option value="">Select an issue</option>
+            <option value="Lights on">The light of the vehicle is on</option>
+            <option value="No parking">Vehicle is parked in a no-parking zone</option>
+            <option value="Towing">Vehicle is being towed</option>
+            <option value="Blocked path">Vehicle is blocking the path</option>
+            <option value="Suspicious activity">Suspicious activity near the vehicle</option>
+            <option value="Child/Pet inside">Child or pet left inside the vehicle</option>
+            <option value="Accident">Vehicle met with an accident</option>
+            <option value="Flat tire">Vehicle has a flat tire</option>
+            <option value="Breakdown">Vehicle is broken down</option>
+            <option value="Unauthorized access">Unauthorized access attempt</option>
+        </select>
+
+        <h2>Additional Information</h2>
+        <textarea id="additionalInfo" rows="4" placeholder="Enter extra details..." autocomplete="off"></textarea>
+
+        <button class="btn" onclick="showConsentModal()">Start Verification</button>
+    </div>
+
+    <!-- Step 3: Camera Verification -->
+    <div id="videoVerification" class="container">
+        <h2>Verifying Vehicle...</h2>
+        <p>Please focus camera on vehicle</p>
+        <div class="video-container">
+            <video id="video" autoplay playsinline></video>
+            <div id="detectionOutline" class="detection-outline"></div>
+        </div>
+        <div id="detectionInfo" class="detection-info"></div>
+    </div>
+
+    <!-- Step 4: Success Message -->
+    <div id="successMessage" class="container success-card">
+        <h2>Verification Successful</h2>
+        <p>The vehicle has been successfully verified.</p>
+        <div class="btn-group">
+            <button class="btn" onclick="sendAlert()">📩 Send Alert</button>
+            <button class="btn" onclick="callOwner()">📞 Call Owner</button>
+        </div>
+    </div>
+
+    <script>
+        let videoElement = document.getElementById('video');
+        let vehicleID, vehicleInfo, model;
+        let stream;
+        let detectionInterval;
+        let detectionOutline = document.getElementById('detectionOutline');
+        let detectionInfo = document.getElementById('detectionInfo');
+
+        // Initialize first step
+        document.addEventListener("DOMContentLoaded", () => {
+            showStep('vehicleForm');
+            initializeEventListeners();
+        });
+
+        function initializeEventListeners() {
+            document.getElementById('startVerificationBtn').addEventListener('click', showConsentModal);
+            document.querySelector('button[onclick="nextStep()"]').addEventListener('click', nextStep);
+            document.querySelector('button[onclick="callOwner()"]').addEventListener('click', callOwner);
+            document.querySelector('button[onclick="sendAlert()"]').addEventListener('click', sendAlert);
+        }
+
+        function showStep(stepId) {
+            document.querySelectorAll('.container').forEach(container => {
+                container.classList.remove('active-step');
+            });
+            const step = document.getElementById(stepId);
+            if (step) step.classList.add('active-step');
+        }
+
+        async function nextStep() {
+            vehicleID = document.getElementById('vehicleID').value.trim().toUpperCase();
+            
+            try {
+                const response = await fetch(`http://localhost:5000/api/vehicle/${vehicleID}`);
+                if (!response.ok) throw new Error('Vehicle not found');
+                
+                vehicleInfo = await response.json();
+                document.getElementById("errorMsg").style.display = "none";
+                document.getElementById("vehicleDetails").innerHTML = `
+                    <strong>Model:</strong> ${vehicleInfo.model}<br>
+                    <strong>Vehicle No:</strong> ${vehicleInfo.vehicleNo}<br>
+                    <strong>Owner:</strong> ${vehicleInfo.ownerName}<br>
+                    <strong>Driver:</strong> ${vehicleInfo.driverName}
+                `;
+                showStep('issueForm');
+            } catch (error) {
+                document.getElementById("errorMsg").style.display = "block";
+            }
+        }
+
+        function showConsentModal() {
+            const issueSelect = document.getElementById('issueSelect');
+            if (!issueSelect.value) {
+                alert('Please select an issue first!');
+                return;
+            }
+            
+            const modal = document.getElementById('consentModal');
+            modal.style.display = 'flex';
+            setTimeout(() => modal.style.opacity = 1, 10);
+        }
+
+        function cancelVerification() {
+            const modal = document.getElementById('consentModal');
+            modal.style.opacity = 0;
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
+
+        async function proceedWithVerification() {
+            cancelVerification();
+            document.getElementById('fullScreenLoading').style.display = 'flex';
+
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" } 
+                });
+                videoElement.srcObject = stream;
+                
+                await new Promise((resolve) => {
+                    videoElement.onloadedmetadata = () => {
+                        videoElement.play();
+                        resolve();
+                    };
+                });
+
+                model = await cocoSsd.load();
+                document.getElementById('fullScreenLoading').style.display = 'none';
+                showStep('videoVerification');
+                startDetection();
+            } catch (error) {
+                alert("Camera access denied or error loading model: " + error.message);
+                document.getElementById('fullScreenLoading').style.display = 'none';
+            }
+        }
+
+        function startDetection() {
+            detectionInterval = setInterval(async () => {
+                const predictions = await model.detect(videoElement);
+                let detected = false;
+                let highestScore = 0;
+
+                detectionOutline.style.display = 'none';
+                detectionInfo.style.display = 'none';
+
+                predictions.forEach(prediction => {
+                    const validClasses = ["car", "bus", "truck", "motorcycle", "bicycle"];
+                    if (validClasses.includes(prediction.class)) {
+                        if (prediction.score > highestScore) {
+                            highestScore = prediction.score;
+                        }
+
+                        if (prediction.score >= 0.65) {
+                            detected = true;
+                            detectionOutline.style.display = 'block';
+                            detectionInfo.textContent = 
+                                `${prediction.class} (${(prediction.score * 100).toFixed(2)}%)`;
+                            detectionInfo.style.display = 'block';
+                        }
+                    }
+                });
+
+                if (detected && highestScore >= 0.65) {
+                    clearInterval(detectionInterval);
+                    setTimeout(() => {
+                        if (stream) {
+                            stream.getTracks().forEach(track => track.stop());
+                        }
+                        showStep('successMessage');
+                    }, 2000);
+                }
+            }, 500);
+        }
+
+        async function sendAlert() {
+            const message = `🚨 Vehicle Alert!\nIssue: ${document.getElementById("issueSelect").value}\n` +
+                           `Details: ${document.getElementById("additionalInfo").value}`;
+
+            try {
+                const response = await fetch('http://localhost:5000/api/send-alert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        vehicleID: vehicleInfo.vehicleID,
+                        message: message
+                    })
+                });
+
+                if (!response.ok) throw new Error(await response.text());
+                alert('Alert sent successfully!');
+            } catch (error) {
+                alert('Error sending alert: ' + error.message);
+            }
+        }
+
+        function callOwner() {
+            if (vehicleInfo && vehicleInfo.driverMobile) {
+                window.location.href = `tel:${vehicleInfo.driverMobile}`;
+            } else {
+                alert('Driver contact information not available');
+            }
+        }
+
+        // Cleanup on window close
+        window.addEventListener('beforeunload', () => {
+            if (stream) stream.getTracks().forEach(track => track.stop());
+            if (detectionInterval) clearInterval(detectionInterval);
+        });
+    </script>
+</body>
+</html>
