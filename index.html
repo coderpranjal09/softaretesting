@@ -422,7 +422,7 @@
             vehicleID = document.getElementById('vehicleID').value.trim().toUpperCase();
             
             try {
-                const response = await fetch(`https://your-vercel-app.vercel.app/vehicle/:${vehicleID}`);
+                const response = await fetch(`https://your-vercel-app.vercel.app/vehicle:${vehicleID}`);
                 if (!response.ok) throw new Error('Vehicle not found');
                 
                 vehicleInfo = await response.json();
